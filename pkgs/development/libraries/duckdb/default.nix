@@ -11,11 +11,16 @@
 , unixODBC
 , withJdbc ? false
 , withOdbc ? false
+, zlib
+, makeWrapper
 }:
 
 let
   enableFeature = yes: if yes then "ON" else "OFF";
   versions = lib.importJSON ./versions.json;
+  libPath = lib.makeLibraryPath [
+    zlib
+  ];
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "duckdb";
@@ -32,7 +37,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   outputs = [ "out" "lib" "dev" ];
 
-  nativeBuildInputs = [ cmake ninja python3 ];
+  nativeBuildInputs = [ cmake ninja python3 makeWrapper ];
   buildInputs = [ openssl ]
     ++ lib.optionals withJdbc [ openjdk11 ]
     ++ lib.optionals withOdbc [ unixODBC ];
@@ -50,6 +55,8 @@ stdenv.mkDerivation (finalAttrs: {
   postInstall = ''
     mkdir -p $lib
     mv $out/lib $lib
+
+    wrapProgram $out/bin/duckdb --prefix "LD_LIBRARY_PATH" : "${libPath}"
   '';
 
   doInstallCheck = true;
